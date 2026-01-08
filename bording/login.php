@@ -4,34 +4,32 @@ include "db.php";
 
 $error = "";
 
-
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $username = trim($_POST['username']);
+    $password = trim($_POST['password']);
+    
+    $stmt = $conn->prepare("SELECT user_id, full_name, username, password, role FROM users WHERE username=?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-    if (isset($_POST['admin'])) {
-        $username = trim($_POST['username']);
-        $password = trim($_POST['password']);
-        $stmt = $conn->prepare("SELECT username, password FROM users WHERE username=?");
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $adminResult = $stmt->get_result();
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
 
-        if ($adminResult->num_rows === 1) {
-            $admin = $adminResult->fetch_assoc();
-
-            if (password_verify($password, $admin['password'])) {
-                $_SESSION['username'] = $admin['username'];
-                $_SESSION['role'] = 'admin';
-                header("Location: dash.php");
-                exit();
-            } else {
-                $error = "Incorrect password!";
-            }
-        } else {
-            $error = "Admin account not found!";
+        if (password_verify($password, $user['password'])) {
+            $_SESSION['user_id'] = $user['user_id'];
+            $_SESSION['full_name'] = $user['full_name'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
+            header("Location: dash.php");
             exit();
+        } else {
+            $error = "Incorrect password!";
         }
-
+    } else {
+        $error = "Account not found!";
     }
+    $stmt->close();
 }
 ?>
 <!DOCTYPE html>
@@ -53,7 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
           <h1>Create Account</h1>
           <div class="social-icons">
             <a href="#" class="icon"><i class="fa-brands fa-google-plus-g"></i></a>
-            <a href="#" class="icon"><i class="fa-brands fa-facebook -f"></i></a>
+            <a href="#" class="icon"><i class="fa-brands fa-facebook-f"></i></a>
             <a href="#" class="icon"><i class="fa-brands fa-github"></i></a>
             <a href="#" class="icon"><i class="fa-brands fa-linkedin"></i></a>
           </div>
@@ -69,12 +67,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
           <h1>Sign in</h1>
           <div class="social-icons">
             <a href="#" class="icon"><i class="fa-brands fa-google-plus-g"></i></a>
-            <a href="#" class="icon"><i class="fa-brands fa-facebook -f"></i></a>
+            <a href="#" class="icon"><i class="fa-brands fa-facebook-f"></i></a>
             <a href="#" class="icon"><i class="fa-brands fa-github"></i></a>
             <a href="#" class="icon"><i class="fa-brands fa-linkedin"></i></a>
           </div>
           <span>or use your email password</span>
-          <input type="username" name="username" placeholder="Username" required />
+          <?php if ($error): ?>
+          <div style="color: red; margin: 10px 0; text-align: center;">
+              <?php echo htmlspecialchars($error); ?>
+          </div>
+          <?php endif; ?>
+          <input type="text" name="username" placeholder="Username" required />
           <input type="password" name="password" placeholder="Password" required/>
           <a href="">Forget Your Password</a>
           <button type="submit">Sign In</button>
